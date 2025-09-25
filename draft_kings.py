@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import apis
 import util
 
-OUTPUT_FILE = 'resources\DK_markets_resp.json'
+OUTPUT_FILE = 'resources/DK_markets_resp.json'
 
 # lines_url = f'https://sportsbook.draftkings.com/leagues/football/nfl'
 lines_url = 'https://sportsbook-nash.draftkings.com/sites/US-IL-SB/api/sportscontent/controldata/league/leagueSubcategory/v1/markets?isBatchable=false&templateVars=88808%2C4518&eventsQuery=%24filter%3DleagueId%20eq%20%2788808%27%20AND%20clientMetadata%2FSubcategories%2Fany%28s%3A%20s%2FId%20eq%20%274518%27%29&marketsQuery=%24filter%3DclientMetadata%2FsubCategoryId%20eq%20%274518%27%20AND%20tags%2Fall%28t%3A%20t%20ne%20%27SportcastBetBuilder%27%29&include=Events&entity=events'
@@ -49,7 +49,7 @@ def get_lines_json(fetch=True):
             util.write_string_to_file(body, OUTPUT_FILE)
         return body.json()
     else:
-        with open('resources\DK_markets_resp.json') as file:
+        with open(OUTPUT_FILE) as file:
             data = json.load(file)
         return data
 

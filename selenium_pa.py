@@ -18,7 +18,11 @@ def get_pickem_html(u, p):
         username_input.send_keys(u)
 
         pass_input = driver.find_element(By.XPATH, "//input[@name='password']")
-        pass_input.send_keys(base64.b64decode(p).decode('utf-8'))
+        try:
+            pass_input.send_keys(base64.b64decode(p).decode('utf-8'))
+        except Exception as err:
+            print(f'Base64 decoding of password failed. Did you enter it?')
+            raise err
 
         continue_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Continue')]")
         continue_button.click()
