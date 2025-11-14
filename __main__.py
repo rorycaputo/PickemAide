@@ -4,16 +4,17 @@ import draft_kings
 import pickem
 import espn_bet
 
-FETCH_PICKEM = False
-FETCH_DRAFKKINGS = False
-FETCH_ESPNBET = False
+FETCH_PICKEM = True
+FETCH_DRAFKKINGS = True
+FETCH_ESPNBET = True
 
-DRAFTKINGS_ODDS_HEADER = 'DK Odds'
+AVG_ALL = 'AVG_ALL'
 DRAFTKINGS_DIFF_HEADER = 'DK Diff'
-ESPNBET_ODDS_HEADER = 'ESPN Odds'
+DRAFTKINGS_ODDS_HEADER = 'DK Odds'
 ESPNBET_DIFF_HEADER = 'ESPN Diff'
+ESPNBET_ODDS_HEADER = 'ESPN Odds'
 
-SORT_BY_HEADERS = [DRAFTKINGS_DIFF_HEADER, DRAFTKINGS_ODDS_HEADER] # [Spread Diff Header, Odds Header]
+SORT_BY_HEADERS = [AVG_ALL] # [Spread Diff Header, Odds Header]
 
 def main():
     pickem_lines = pickem.get_pickem_lines(FETCH_PICKEM)
@@ -53,9 +54,22 @@ def build_table(pickem_lines, dk_lines, espn_lines):
             ESPNBET_DIFF_HEADER: espn_record['diff']
         })
 
-    sorted_final_table = sorted(final_table, key=lambda x: (-float(x[SORT_BY_HEADERS[0]]), float(re.sub(r'[^\d.-]', '', re.sub(r'Even', '0', x[SORT_BY_HEADERS[1]], flags=re.IGNORECASE)))))
+    # Todo averaging logic is hardcoded here
+    if SORT_BY_HEADERS[0] == AVG_ALL:
+        spread_average = lambda x: ((get_spread_from_table(x, DRAFTKINGS_DIFF_HEADER) + get_spread_from_table(x, ESPNBET_DIFF_HEADER)) / 2)
+        odds_average = lambda x: (get_odds_from_table(x, DRAFTKINGS_ODDS_HEADER) + get_odds_from_table(x, ESPNBET_ODDS_HEADER) / 2)
+        sort_lambda = lambda x: (-spread_average(x), odds_average(x))
+    else:
+        sort_lambda = lambda x: (-get_spread_from_table(x, SORT_BY_HEADERS[0]), get_odds_from_table(x, SORT_BY_HEADERS[1]))
+    sorted_final_table = sorted(final_table, key=sort_lambda)
     table = tabulate(sorted_final_table, headers="keys", tablefmt="fancy_outline")
     return table
+
+def get_spread_from_table(table, spread_header):
+    return float(table[spread_header])
+
+def get_odds_from_table(table, odds_header):
+    return float(re.sub(r'[^\d.-]', '', re.sub(r'Even', '0', table[odds_header], flags=re.IGNORECASE)))
 
 name_map = [
     {
