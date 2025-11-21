@@ -55,21 +55,39 @@ def build_table(pickem_lines, dk_lines, espn_lines):
         })
 
     # Todo averaging logic is hardcoded here
+    # Todo If the spread diffs aren't the same this just sorts by odds of the highest diff
     if SORT_BY_HEADERS[0] == AVG_ALL:
-        spread_average = lambda x: ((get_spread_from_table(x, DRAFTKINGS_DIFF_HEADER) + get_spread_from_table(x, ESPNBET_DIFF_HEADER)) / 2)
-        odds_average = lambda x: (get_odds_from_table(x, DRAFTKINGS_ODDS_HEADER) + get_odds_from_table(x, ESPNBET_ODDS_HEADER) / 2)
-        sort_lambda = lambda x: (-spread_average(x), odds_average(x))
+        spread_diff_average = lambda x: ((get_diff_from_table(x, DRAFTKINGS_DIFF_HEADER) + get_diff_from_table(x, ESPNBET_DIFF_HEADER)) / 2)
+        odds_average = lambda x: determine_odds_average(x)
+        sort_lambda = lambda x: (-spread_diff_average(x), odds_average(x))
     else:
-        sort_lambda = lambda x: (-get_spread_from_table(x, SORT_BY_HEADERS[0]), get_odds_from_table(x, SORT_BY_HEADERS[1]))
+        sort_lambda = lambda x: (-get_diff_from_table(x, SORT_BY_HEADERS[0]), get_odds_from_table(x, SORT_BY_HEADERS[1]))
     sorted_final_table = sorted(final_table, key=sort_lambda)
     table = tabulate(sorted_final_table, headers="keys", tablefmt="fancy_outline")
     return table
 
-def get_spread_from_table(table, spread_header):
+def get_diff_from_table(table, spread_header):
     return float(table[spread_header])
 
 def get_odds_from_table(table, odds_header):
-    return float(re.sub(r'[^\d.-]', '', re.sub(r'Even', '0', table[odds_header], flags=re.IGNORECASE)))
+    odds_float = float(re.sub(r'[^\d.-]', '', re.sub(r'Even', '100', table[odds_header], flags=re.IGNORECASE)))
+    if odds_float == -100:
+        return 100
+    return odds_float
+
+def american_to_decimal(american_odds):
+    if american_odds >= 0:
+        return 1 + (american_odds / 100)
+    else:
+        return 1 - (100 / american_odds)
+
+def determine_odds_average(x):
+    if get_diff_from_table(x, DRAFTKINGS_DIFF_HEADER) == get_diff_from_table(x, ESPNBET_DIFF_HEADER):
+        return (american_to_decimal(get_odds_from_table(x, DRAFTKINGS_ODDS_HEADER)) + american_to_decimal(get_odds_from_table(x, ESPNBET_ODDS_HEADER))) / 2
+    elif get_diff_from_table(x, DRAFTKINGS_DIFF_HEADER) > get_diff_from_table(x, ESPNBET_DIFF_HEADER):
+        return american_to_decimal(get_odds_from_table(x, DRAFTKINGS_ODDS_HEADER))
+    else:
+        return american_to_decimal(get_odds_from_table(x, ESPNBET_ODDS_HEADER))
 
 name_map = [
     {
@@ -247,16 +265,16 @@ def get_spread_display_arrow(spread_diff):
 def get_odds_display_arrow(odds):
     display_arrow = ''
     if (odds.lower() == 'even'):
-        odds = 0
+        odds = 100
     if float(odds) <= -120:
         display_arrow = '\033[92m \u2B9D\033[00m'
     elif float(odds) <= -115:
         display_arrow = ' \u2B9D'
-    elif float(odds) < -110:
+    elif float(odds) < -110: # Book default
         display_arrow = ' ^'
-    elif float(odds) >= 0:
+    elif float(odds) >= -100: # Even
         display_arrow = '\033[91m \u2B9F\033[00m'
-    elif float(odds) > -105:
+    elif float(odds) >= -105:
         display_arrow = ' \u2B9f'
     elif float(odds) > -110:
         display_arrow = ' v'
