@@ -27,7 +27,7 @@ def get_pickem_html(u, p):
         continue_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Continue')]")
         continue_button.click()
 
-        wait = WebDriverWait(driver, 10)
+        wait = WebDriverWait(driver, 20)
         username_input = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[@data-cy='spread']")))
         pickem_html = driver.page_source
        
