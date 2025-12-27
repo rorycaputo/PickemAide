@@ -9,11 +9,11 @@ import math
 OUTPUT_FILE = 'resources/odds_shark.html'
 
 EXCLUDED_BOOKS = [
-    # 'CAESARS',
-    # 'BRACCO',
-    # 'FANDUEL',
-    # 'BETMGM',
-    'DRAFTKINGS'
+        # 'CAESARS',
+        # 'BRACCO',
+        # 'FANDUEL',
+        # 'BETMGM',
+        'DRAFTKINGS'
     ]
 
 # spread_url = f'https://www.oddsshark.com/api/ticker/nfl?_format=json' (API call that didn't have all the data)

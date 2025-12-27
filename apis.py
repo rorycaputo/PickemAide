@@ -114,7 +114,7 @@ def espn_chunk_get(url):
         'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'Referer': 'https://espnbet.com/sport/football/organization/united-states/competition/nfl/section/lines',
+        'Referer': 'https://sportsbook.thescore.bet/sport/football/organization/united-states/competition/nfl/section/lines',
         'DNT': '1',
         'Sec-GPC': '1',
         'Connection': 'keep-alive',
@@ -127,13 +127,13 @@ def espn_chunk_get(url):
     return call_get_api(url, headers).content.decode('utf-8')
 
 def espn_startup_get(startup_sha):
-    espn_startup_url = f'https://sportsbook-espnbet.us-il.thescore.bet/graphql/persisted_queries/{startup_sha}?operationName=Startup&variables=%7B%22connectToken%22%3A%22dfccj0ad8xg1iwqpqilcxrkm1o61x1d%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{startup_sha}%22%7D%7D'
+    espn_startup_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{startup_sha}?operationName=Startup&variables=%7B%22connectToken%22%3A%22dfccj0ad8xg1iwqpqilcxrkm1o61x1d%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{startup_sha}%22%7D%7D'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
         'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'Referer': 'https://espnbet.com/',
+        'Referer': 'https://sportsbook.thescore.bet/',
         'content-type': 'application/json',
         'apollographql-client-name': 'espnbet-espnbet-web',
         'apollographql-client-version': '25.19.2',
@@ -141,7 +141,7 @@ def espn_startup_get(startup_sha):
         'x-app-version': '25.19.2',
         'x-app': 'espnbet',
         'x-client': 'espnbet',
-        'Origin': 'https://espnbet.com',
+        'Origin': 'https://sportsbook.thescore.bet',
         'DNT': '1',
         'Sec-GPC': '1',
         'Connection': 'keep-alive',
@@ -155,13 +155,13 @@ def espn_startup_get(startup_sha):
     return call_get_api(espn_startup_url, headers).json()
 
 def espn_marketplace_get(marketplace_sha, bearer_token):
-    espn_marketplace_url = f'https://sportsbook-espnbet.us-il.thescore.bet/graphql/persisted_queries/{marketplace_sha}?operationName=Marketplace&variables=%7B%22includeSectionDefaultField%22%3Atrue%2C%22isAdhocCarouselEnabled%22%3Afalse%2C%22isCfpRankingEnabled%22%3Afalse%2C%22includeStandardizedBoxscore%22%3Atrue%2C%22isBrandingImageEnabled%22%3Atrue%2C%22isNewFeaturedBetParticipantLogoEnabled%22%3Atrue%2C%22isSubscription%22%3Afalse%2C%22isFeaturedMarketCardRedesignEnabled%22%3Atrue%2C%22isCombatSportsRedesignEnabled%22%3Atrue%2C%22isParlayLoungeHeaderRedesignEnabled%22%3Afalse%2C%22isFeaturedBetCarouselHeaderRedesignEnabled%22%3Atrue%2C%22isDsModelRecommendedPropsEnabled%22%3Afalse%2C%22canonicalUrl%22%3A%22%2Fsport%2Ffootball%2Forganization%2Funited-states%2Fcompetition%2Fnfl%2Fsection%2Flines%22%2C%22filterInput%22%3Anull%2C%22oddsFormat%22%3A%22AMERICAN%22%2C%22pageType%22%3A%22PAGE%22%2C%22includeRecommendedProps%22%3Atrue%2C%22includeRichEvent%22%3Atrue%2C%22selectedFilterId%22%3A%22%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{marketplace_sha}%22%7D%7D'
+    espn_marketplace_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{marketplace_sha}?operationName=Marketplace&variables=%7B%22includeSectionDefaultField%22%3Atrue%2C%22isAdhocCarouselEnabled%22%3Afalse%2C%22isCfpRankingEnabled%22%3Afalse%2C%22includeStandardizedBoxscore%22%3Atrue%2C%22isBrandingImageEnabled%22%3Atrue%2C%22isNewFeaturedBetParticipantLogoEnabled%22%3Atrue%2C%22isSubscription%22%3Afalse%2C%22isFeaturedMarketCardRedesignEnabled%22%3Atrue%2C%22isCombatSportsRedesignEnabled%22%3Atrue%2C%22isParlayLoungeHeaderRedesignEnabled%22%3Afalse%2C%22isFeaturedBetCarouselHeaderRedesignEnabled%22%3Atrue%2C%22isDsModelRecommendedPropsEnabled%22%3Afalse%2C%22canonicalUrl%22%3A%22%2Fsport%2Ffootball%2Forganization%2Funited-states%2Fcompetition%2Fnfl%2Fsection%2Flines%22%2C%22filterInput%22%3Anull%2C%22oddsFormat%22%3A%22AMERICAN%22%2C%22pageType%22%3A%22PAGE%22%2C%22includeRecommendedProps%22%3Atrue%2C%22includeRichEvent%22%3Atrue%2C%22selectedFilterId%22%3A%22%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{marketplace_sha}%22%7D%7D'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
         'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'Referer': 'https://espnbet.com/',
+        'Referer': 'https://sportsbook.thescore.bet/',
         'content-type': 'application/json',
         'apollographql-client-name': 'espnbet-espnbet-web',
         'apollographql-client-version': '25.19.2',
@@ -176,7 +176,7 @@ def espn_marketplace_get(marketplace_sha, bearer_token):
         'x-datadog-parent-id': '2712125911426511068',
         'x-datadog-sampling-priority': '1',
         'x-datadog-trace-id': '15865626566093488740',
-        'Origin': 'https://espnbet.com',
+        'Origin': 'https://sportsbook.thescore.bet',
         'DNT': '1',
         'Sec-GPC': '1',
         'Connection': 'keep-alive',

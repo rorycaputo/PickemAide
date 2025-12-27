@@ -9,7 +9,7 @@ import util
 #  todo see if we can just exclude if its false and there's no file saved
 FETCH_PICKEM = True
 FETCH_DRAFKKINGS = True
-FETCH_ESPNBET = False
+FETCH_ESPNBET = True
 FETCH_ODDSHARK = True
 
 AVG_ALL = 'AVG_ALL' # Doesn't include Odds Shark as of writing

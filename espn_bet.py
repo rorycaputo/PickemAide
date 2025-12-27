@@ -16,7 +16,7 @@ import util
 
 OUTPUT_FILE = 'resources/espn_markets_resp.json'
 
-espn_base_url = "https://espnbet.com"
+espn_base_url = "https://sportsbook.thescore.bet"
 espn_lines_url = f'{espn_base_url}/sport/football/organization/united-states/competition/nfl/section/lines'
 
 def get_espn_html():
