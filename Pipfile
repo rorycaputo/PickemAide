@@ -8,7 +8,6 @@ tabulate = "*"
 requests = "*"
 lxml = "*"
 selenium = "*"
-re = "*"
 
 [dev-packages]
 
