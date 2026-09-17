@@ -1,6 +1,6 @@
-#  The SHA vlaue for each REST call you get from the chunk script: https://espnbet.com/_next/static/chunks/pages/index-46ad9c586d0dff59.js
+#  The SHA value for each REST call you get from the chunk script: https://espnbet.com/_next/static/chunks/pages/index-46ad9c586d0dff59.js
 #  No cookie needed
-# Which oyu can get the filename for via the HTML GET: https://espnbet.com/sport/football/organization/united-states/competition/nfl/section/lines
+# Which you can get the filename for via the HTML GET: https://espnbet.com/sport/football/organization/united-states/competition/nfl/section/lines
 
 #  To get bearer token:
 # Need to call https://sportsbook-espnbet.us-il.thescore.bet since us defualt one returns error.
@@ -62,7 +62,7 @@ def get_espn_bet_lines(fetch=True):
             marketplaceShelfChildren = sectionChild['marketplaceShelfChildren']
     espn_spread_data = []
     for marketplaceShelfChild in marketplaceShelfChildren:
-        for market in marketplaceShelfChild['markets']:
+        for market in marketplaceShelfChild['pagedMarkets']:
             if market['name'] == 'Game Spread':
                 for selection in market['selections']:
                     espn_spread_data.append({

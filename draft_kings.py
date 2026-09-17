@@ -62,7 +62,7 @@ def get_draft_kings_lines(fetch=True):
     dk_lines_data = []
     for event in lines_json['events']:
         start_event_date = datetime.strptime(event['startEventDate'][:-9], '%Y-%m-%dT%H:%M:%S')
-        if start_event_date <= current_date + timedelta(days=7):
+        if start_event_date <= current_date + timedelta(days=7): # Todo add first week override
             event_id = event['id']
             for market in lines_json['markets']:
                 market_id = market['id']

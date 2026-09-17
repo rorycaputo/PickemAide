@@ -6,6 +6,10 @@ import espn_bet
 import odds_shark
 import util
 
+# Todo, 2026 vision: Make each book object-oriented instead of returning random json for each.
+# This way can split Odds Shark up into multiple book objects
+# and more importantly no weirdness in this main file when it comes to creating prettier tables and metrics views
+
 #  todo see if we can just exclude if its false and there's no file saved
 FETCH_PICKEM = True
 FETCH_DRAFKKINGS = True
@@ -20,7 +24,7 @@ ESPNBET_ODDS_HEADER = 'ESPN Odds'
 ODDSSHARK_DIFF_HEADER = 'OS Diff'
 ODDSSHARK_ODDS_HEADER = 'OS Odds'
 
-SORT_BY_HEADERS = [ODDSSHARK_DIFF_HEADER, ODDSSHARK_ODDS_HEADER] # [Spread Diff Header, Odds Header]
+SORT_BY_HEADERS = [ODDSSHARK_DIFF_HEADER, ODDSSHARK_ODDS_HEADER] # [Spread Diff Header, Odds Header] (Or just AVG_ALL by itself)
 
 def main():
     pickem_lines = pickem.get_pickem_lines(FETCH_PICKEM)
@@ -163,7 +167,7 @@ name_map = [
     {
         'p': 'Rams',
         'd': 'LA Rams',
-        'o': 'LAR'
+        'o': 'LA'
     },
     {
         'p': 'Eagles',

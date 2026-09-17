@@ -9,32 +9,39 @@ import math
 OUTPUT_FILE = 'resources/odds_shark.html'
 
 EXCLUDED_BOOKS = [
-        # 'CAESARS',
-        # 'BRACCO',
-        # 'FANDUEL',
-        # 'BETMGM',
-        'DRAFTKINGS'
+        # 'BetMGM',
+        # 'bet365',
+        'DraftKings',
+        # 'FanDuel',
+        # 'Fanatics Sportsbook',
+        # 'BetRivers',
+        # 'Caesars',
+        'theScore Bet',
+        # 'Hard Rock Bet',
     ]
 
 # spread_url = f'https://www.oddsshark.com/api/ticker/nfl?_format=json' (API call that didn't have all the data)
-spread_url = 'https://www.oddsshark.com/nfl/odds'
+spread_url = 'https://www.covers.com/sport/football/nfl/odds'
 
 def get_spread_html(fetch=True):
     if fetch:
         headers = {
-            'Host': 'www.oddsshark.com',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0',
+            'Host': 'www.covers.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br, zstd',
             'DNT': '1',
-            'Alt-Used': 'www.oddsshark.com',
+            'Pragma': 'no-cache',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
             'Sec-Fetch-Dest': 'document',
             'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Sec-GPC': '1',
             'Priority': 'u=0, i',
+            'Cache-Control': 'no-cache',
             'TE': 'trailers'
         }
 
@@ -64,23 +71,26 @@ def get_odds_shark_spreads(fetch=True):
     os_spreads_data = []
     # Generates all_events = [{team: '', spreads: [{spread: '', odds: '', book: ''}]}]
     all_events = []
-    for event in odds_shark_html.xpath("//div[starts-with(@class, 'odds--group__event-container football')]"):
-        event_date = datetime.fromtimestamp(int(event.get("data-event-date")))
-        if current_date <= event_date <= tuesday:
+    spreads_table = odds_shark_html.xpath('//table[@id="spread-table"]')[0]
+    for event in spreads_table.xpath(".//tr[starts-with(@class, 'oddsGameRow')]"):
+        date_cell = event.xpath('.//div[@class="td-cell game-time"]')[0]
+        date_spans = date_cell.xpath('.//span/text()')
+        # format example: <span>Sep 17,&nbsp;</span><span>20:15</span>
+        date_string = "{} {}".format(date_spans[0].replace('\xa0', ' ').strip().rstrip(','), date_spans[1].strip())
+        event_date = datetime.strptime(f"{date_string} {current_date.year}", "%b %d %H:%M %Y")
+        if current_date.month == 12 and event_date.month == 1 and event_date.day <= 7:
+            event_date = event_date.replace(year=event_date.year + 1)
+
+        if current_date <= event_date <= tuesday: # Todo add first week override
             events_row = []
-            for participant_name in event.xpath('.//div[@class="participant-name"]//span[@class="mobile-only-name"]'):
-                events_row.append({'team': participant_name.text, 'spreads': [], 'average_spread': None, 'average_mode_odds': None})
-            opening_or_best_or_none_xpath = "boolean(.//div[@class='mobile-only-best-odds' or @class='odds-spread opening' or @class='odds-type-no-odds'])"
-            for first_row in event.xpath(".//div[@class='first-row']"):
-                if not first_row.xpath(opening_or_best_or_none_xpath):
-                    spread = get_spreads_from_cell(first_row, EXCLUDED_BOOKS)
-                    if spread is not None:
-                        events_row[0]['spreads'].append(spread)
-            for second_row in event.xpath(".//div[@class='second-row']"):
-                if not second_row.xpath(opening_or_best_or_none_xpath):
-                    spread = get_spreads_from_cell(second_row, EXCLUDED_BOOKS)
-                    if spread is not None:
-                        events_row[1]['spreads'].append(spread)
+            for participant_name in event.xpath('.//strong/text()'):
+                events_row.append({'team': participant_name, 'spreads': [], 'average_spread': None, 'average_mode_odds': None})
+            # opening_or_best_or_none_xpath = "boolean(.//div[@class='mobile-only-best-odds' or @class='odds-spread opening' or @class='odds-type-no-odds'])"
+            for book_column in event.xpath('.//td[contains(@class, "liveOddsCell")]'):
+                spread = get_spreads_from_cell(book_column, EXCLUDED_BOOKS)
+                if not spread is None:
+                    if (home := spread.get('home')): events_row[1]['spreads'].append(home)
+                    if (away := spread.get('away')): events_row[0]['spreads'].append(away)
             for side in events_row:
                 all_events.append(side)
 
@@ -96,14 +106,27 @@ def get_odds_shark_spreads(fetch=True):
     
     return os_spreads_data
             
-def get_spreads_from_cell(spread_cell, excluded_books=[]):
-    spread = spread_cell.xpath('.//div[@data-odds-spread]/text()')[0].strip()
-    odds = spread_cell.xpath('.//div[@data-odds-signed-spread]/text()')[0].strip()
-    book = spread_cell.xpath('.//a[@class="odds-data-cell"]/text()')[0].strip()
-
+def get_spreads_from_cell(book_column, excluded_books=[]):
+    book = book_column.get('data-book')
     if book in excluded_books:
         return None
-    return {'spread': spread, 'odds': odds, 'book': book}
+    home_div_result = book_column.xpath('.//div[contains(@class, "home-cell")]')
+    home_div = home_div_result[0] if home_div_result else None
+    away_div_result = book_column.xpath('.//div[contains(@class, "away-cell")]')
+    away_div = away_div_result[0] if away_div_result else None
+    spreads = {}
+    for spread_div in [home_div, away_div]:
+        if not spread_div is None:
+            a = spread_div.xpath('(.//a)[1]')[0]
+            spread = spread_div.xpath('.//a[1]/text()[1]')[0].strip()
+            odds = a.xpath('.//span[contains(@class, "American")]/text()')[0].strip()
+            is_home = 'home' in spread_div.get('class')
+            if not spread == 'PK':
+                if is_home:
+                    spreads['home'] = {'spread': spread, 'odds': odds, 'book': book}
+                else:
+                    spreads['away'] = {'spread': spread, 'odds': odds, 'book': book}
+    return spreads
 
 def get_average_spread(spreads):
     spread_values = [float(item['spread']) for item in spreads if 'spread' in item]
