@@ -4,6 +4,7 @@ import draft_kings
 import pickem
 import espn_bet
 import odds_shark
+import spread_odds_converter
 import util
 
 # Todo, 2026 vision: Make each book object-oriented instead of returning random json for each.
@@ -17,20 +18,21 @@ FETCH_ESPNBET = True
 FETCH_ODDSHARK = True
 
 AVG_ALL = 'AVG_ALL' # Doesn't include Odds Shark as of writing
-DRAFTKINGS_DIFF_HEADER = 'DK Diff'
+DRAFTKINGS_DIFF_HEADER = 'DK Value Diff*'
 DRAFTKINGS_ODDS_HEADER = 'DK Odds'
-ESPNBET_DIFF_HEADER = 'ESPN Diff'
+ESPNBET_DIFF_HEADER = 'ESPN Value Diff*'
 ESPNBET_ODDS_HEADER = 'ESPN Odds'
 ODDSSHARK_DIFF_HEADER = 'OS Diff'
 ODDSSHARK_ODDS_HEADER = 'OS Odds'
 
-SORT_BY_HEADERS = [ODDSSHARK_DIFF_HEADER, ODDSSHARK_ODDS_HEADER] # [Spread Diff Header, Odds Header] (Or just AVG_ALL by itself)
+SORT_BY_HEADERS = [AVG_ALL] # [Spread Diff Header, Odds Header] (Or just AVG_ALL by itself)
 
 def main():
     pickem_lines = pickem.get_pickem_lines(FETCH_PICKEM)
     os_lines = odds_shark.get_odds_shark_spreads(FETCH_ODDSHARK)
     dk_lines = draft_kings.get_draft_kings_lines(FETCH_DRAFKKINGS)
     espn_lines = espn_bet.get_espn_bet_lines(FETCH_ESPNBET)
+    print('* Calculated using AI-researched weights for each point change based on modern era games.')
     print(build_table(pickem_lines, dk_lines, espn_lines, os_lines))
 
 def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
@@ -40,7 +42,8 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
         dk_record = get_record(dk_team, dk_lines)
         if dk_record is not None:
             dk_spread_diff = get_spread_diff(line['spread'], dk_record['spread'])
-            dk_record['diff'] = dk_spread_diff
+            dk_value_diff = get_value_diff(line['spread'], dk_record['spread'], dk_record['odds'])['cents_gap']
+            dk_record['diff'] = dk_value_diff
         else:
             dk_spread_diff = 0
             dk_record = {'spread': '999', 'odds': '-110', 'diff': '0'}
@@ -49,7 +52,8 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
         espn_record = get_record(espn_team, espn_lines)
         if espn_record is not None:
             espn_spread_diff = get_spread_diff(line['spread'], espn_record['spread'])
-            espn_record['diff'] = espn_spread_diff
+            espn_value_diff = get_value_diff(line['spread'], espn_record['spread'], espn_record['odds'])['cents_gap']
+            espn_record['diff'] = espn_value_diff
         else:
             espn_spread_diff = 0
             espn_record = {'spread': '999', 'odds': '-110', 'diff': '0'}
@@ -58,6 +62,8 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
         os_record = get_record(os_team, os_lines)
         if os_record is not None:
             os_spread_diff = get_spread_diff(line['spread'], os_record['spread'])
+            # Not ready since its averaged still and not only .5 increments
+            # os_value_diff = get_value_diff(line['spread'], os_record['spread'], os_record['odds'])['cents_gap']
             os_record['diff'] = os_spread_diff
         else:
             os_spread_diff = 0
@@ -69,12 +75,12 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
             'Odds Shark': f'{os_record["spread"]}{get_spread_display_arrow(os_spread_diff)}',
             ODDSSHARK_ODDS_HEADER: f'{os_record["odds"]}{get_odds_display_arrow(os_record["odds"])}',
             ODDSSHARK_DIFF_HEADER: os_record['diff'],
-            'Draft Kings': f'{dk_record["spread"]}{get_spread_display_arrow(dk_spread_diff)}',
-            DRAFTKINGS_ODDS_HEADER: f'{dk_record["odds"]}{get_odds_display_arrow(dk_record["odds"])}',
-            DRAFTKINGS_DIFF_HEADER: dk_record['diff'],
-            'ESPN Bet': f'{espn_record["spread"]}{get_spread_display_arrow(espn_spread_diff)}',
-            ESPNBET_ODDS_HEADER: f'{espn_record["odds"]}{get_odds_display_arrow(espn_record["odds"])}',
-            ESPNBET_DIFF_HEADER: espn_record['diff']
+            'Draft Kings': f'{dk_record["spread"]}', #{get_spread_display_arrow(dk_spread_diff)}',
+            DRAFTKINGS_ODDS_HEADER: f'{dk_record["odds"]}', #{get_odds_display_arrow(dk_record["odds"])}',
+            DRAFTKINGS_DIFF_HEADER: f'{dk_record["diff"]}{get_cents_display_arrow(dk_record["diff"])}',
+            'ESPN Bet': f'{espn_record["spread"]}', #{get_spread_display_arrow(espn_spread_diff)}',
+            ESPNBET_ODDS_HEADER: f'{espn_record["odds"]}', #{get_odds_display_arrow(espn_record["odds"])}',
+            ESPNBET_DIFF_HEADER: f'{espn_record["diff"]}{get_cents_display_arrow(espn_record["diff"])}',
         })
 
     # Todo averaging logic is hardcoded here
@@ -90,7 +96,7 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
     return table
 
 def get_diff_from_table(table, spread_header):
-    return float(table[spread_header])
+    return float(re.sub(r'[^\d.-]', '', table[spread_header]))
 
 def get_odds_from_table(table, odds_header):
     return util.get_odds_float(table[odds_header])
@@ -293,6 +299,11 @@ def get_spread_diff(pickemSpread, dkSpread):
     # return str(pickemSpread - dkSpread + offset) + ('*' if offset != 0 else '')
     return float(pickemSpread) - float(dkSpread)
 
+def get_value_diff(pickemSpread, bookSpread, bookOdds):
+    if (str(bookOdds).lower() == 'even'):
+            bookOdds = 100
+    return spread_odds_converter.price_gap(float(pickemSpread), -110, float(bookSpread), float(bookOdds))
+
 def get_spread_display_arrow(spread_diff):
     if isinstance(spread_diff, str):
         spread_diff = float(re.sub(r'[^\d.-]', '',spread_diff))
@@ -327,6 +338,23 @@ def get_odds_display_arrow(odds):
     elif float(odds) >= -105:
         display_arrow = ' \u2B9f'
     elif float(odds) > -110:
+        display_arrow = ' v'
+
+    return display_arrow
+
+def get_cents_display_arrow(cents_diff):
+    display_arrow = ''
+    if float(cents_diff) >= 30:
+        display_arrow = '\033[92m \u2B9D\033[00m'
+    elif float(cents_diff) >= 15:
+        display_arrow = ' \u2B9D'
+    elif float(cents_diff) >= 5:
+        display_arrow = ' ^'
+    elif float(cents_diff) <= -30:
+        display_arrow = '\033[91m \u2B9F\033[00m'
+    elif float(cents_diff) <= -15:
+        display_arrow = ' \u2B9f'
+    elif float(cents_diff) <= -5:
         display_arrow = ' v'
 
     return display_arrow
