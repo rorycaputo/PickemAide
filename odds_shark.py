@@ -77,6 +77,8 @@ def get_odds_shark_spreads(fetch=True):
         date_spans = date_cell.xpath('.//span/text()')
         # format example: <span>Sep 17,&nbsp;</span><span>20:15</span>
         date_string = "{} {}".format(date_spans[0].replace('\xa0', ' ').strip().rstrip(','), date_spans[1].strip())
+        if 'Today' in date_string:
+            date_string = date_string.replace('Today', current_date.strftime('%b %d'))
         event_date = datetime.strptime(f"{date_string} {current_date.year}", "%b %d %H:%M %Y")
         if current_date.month == 12 and event_date.month == 1 and event_date.day <= 7:
             event_date = event_date.replace(year=event_date.year + 1)
