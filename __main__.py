@@ -10,6 +10,7 @@ import util
 # Todo, 2026 vision: Make each book object-oriented instead of returning random json for each.
 # This way can split Odds Shark up into multiple book objects
 # and more importantly no weirdness in this main file when it comes to creating prettier tables and metrics views
+# gotta rip the bandaide and move to csv
 
 #  todo see if we can just exclude if its false and there's no file saved
 FETCH_PICKEM = True
@@ -32,7 +33,7 @@ def main():
     os_lines = odds_shark.get_odds_shark_spreads(FETCH_ODDSHARK)
     dk_lines = draft_kings.get_draft_kings_lines(FETCH_DRAFKKINGS)
     espn_lines = espn_bet.get_espn_bet_lines(FETCH_ESPNBET)
-    print('* Calculated using AI-researched weights for each point change based on modern era games.')
+    print('* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.')
     print(build_table(pickem_lines, dk_lines, espn_lines, os_lines))
 
 def build_table(pickem_lines, dk_lines, espn_lines, os_lines):

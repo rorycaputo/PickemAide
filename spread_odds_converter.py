@@ -88,51 +88,14 @@ def _num_half_point_steps(from_spread: float, to_spread: float) -> int:
 
 def _key_numbers_touched(from_spread: float, to_spread: float,
                           mov_freq: dict) -> set:
-    """
-    Every integer margin whose push probability is gained or lost by moving
-    from from_spread to to_spread -- i.e. every whole number in the closed
-    interval [min, max]. Each integer is counted once, even if it happens to
-    sit on a shared boundary between two 0.5-point steps -- a number's push
-    probability doesn't matter twice just because the move is long.
-
-    Key numbers are magnitudes: they matter the same way whether we're
-    pricing the favorite (-3) or the underdog (+3).
-    """
+    """Every integer margin whose push probability is gained or lost by
+    moving from from_spread to to_spread. Used by price_gap's reporting
+    only -- convert_spread_odds itself walks the move step by step (see
+    below) since the correct math is a sequential transformation, not a
+    simple sum."""
     lo, hi = sorted((abs(from_spread), abs(to_spread)))
-    # abs() on a signed move can flip which end is "low" if the move crosses
-    # zero (e.g. -1.5 -> +1.5) -- in that case just use both magnitudes'
-    # bounding range, since crossing zero still passes through every integer
-    # between them in magnitude terms on each side. This is an edge case
-    # (pick'em-adjacent lines) that's rare in practice.
     import math
-    touched = set()
-    for i in range(math.ceil(lo), math.floor(hi) + 1):
-        if i in mov_freq:
-            touched.add(i)
-    return touched
-
-
-def total_prob_shift(from_spread: float, to_spread: float,
-                      mov_freq: dict = MOV_FREQUENCY_PCT,
-                      baseline_cents_per_half_point: float = BASELINE_CENTS_PER_HALF_POINT,
-                      prob_shift_per_10_cents: float = PROB_SHIFT_PER_10_CENTS
-                      ) -> float:
-    """
-    Total probability-mass shift implied by moving from from_spread to
-    to_spread, combining:
-      - a flat baseline cost per 0.5-point step (still a heuristic --
-        not empirically derived), plus
-      - the actual measured push probability for every key-number
-        magnitude gained or lost along the way (empirically derived,
-        see module docstring).
-    """
-    n_steps = _num_half_point_steps(from_spread, to_spread)
-    baseline = n_steps * (baseline_cents_per_half_point / 10.0) * prob_shift_per_10_cents
-
-    key_extra = sum(mov_freq[i] / 100.0
-                     for i in _key_numbers_touched(from_spread, to_spread, mov_freq))
-
-    return baseline + key_extra
+    return {i for i in range(math.ceil(lo), math.floor(hi) + 1) if i in mov_freq}
 
 
 # --- Main conversion --------------------------------------------------------
@@ -148,19 +111,60 @@ def convert_spread_odds(from_spread: float, from_odds: float, to_spread: float,
 
     Convention: spreads are signed as normally quoted for the side you're
     pricing (favorite negative, dog positive). Moving the spread value UP
-    (e.g. -7 -> -6.5, or +6.5 -> +7) makes that side easier to cover, so
-    the odds get worse (more negative/expensive). Moving it DOWN improves
-    the odds.
+    makes that side easier to cover (better for the bettor); moving it DOWN
+    makes it harder (worse).
+
+    THE MATH, why a push isn't a simple probability add-on:
+    A push pulls probability mass entirely out of the win/loss pool rather
+    than shifting the odds by that amount directly. Walking through a
+    single 0.5-point step across a key number margin M (p = P(margin==M)):
+
+      Direction improves for the bettor, ARRIVING at M (e.g. -3.5 -> -3,
+      or +2.5 -> +3): p_new = p_old / (1 - p)
+      Direction improves, LEAVING M (e.g. -3 -> -2.5, or +3 -> +3.5):
+      p_new = p_old * (1 - p) + p
+      Direction worsens, ARRIVING at M (e.g. -2.5 -> -3, or +3.5 -> +3):
+      p_new = (p_old - p) / (1 - p)
+      Direction worsens, LEAVING M (e.g. -3 -> -3.5, or +3 -> +2.5):
+      p_new = p_old * (1 - p)
+
+    Every 0.5-point step touches exactly one integer (either the step's
+    start or its end, never both, never neither, since the .0/.5 grid
+    alternates) -- so exactly one of "arriving" or "leaving" always
+    applies, with p = 0 for non-key integers, which correctly reduces
+    each formula to a no-op on top of the small baseline step cost.
     """
     if from_spread == to_spread:
         return round(from_odds)
 
-    shift = total_prob_shift(from_spread, to_spread, mov_freq,
-                              baseline_cents_per_half_point, prob_shift_per_10_cents)
+    n_steps = _num_half_point_steps(from_spread, to_spread)
     direction = 1 if to_spread > from_spread else -1
+    baseline_step_shift = (baseline_cents_per_half_point / 10.0) * prob_shift_per_10_cents
 
-    new_prob = implied_prob(from_odds) + direction * shift
-    return prob_to_american(new_prob)
+    prob = implied_prob(from_odds)
+    current = round(from_spread * 2)  # work in half-point integer units to avoid float drift
+
+    for _ in range(n_steps):
+        nxt = current + direction
+        # whichever of current/next lands on a whole number is the integer
+        # this step touches; the grid alternates so exactly one does.
+        if current % 2 == 0:
+            integer_point, arriving = current // 2, False   # leaving this integer
+        else:
+            integer_point, arriving = nxt // 2, True         # arriving at this integer
+
+        p = mov_freq.get(abs(integer_point), 0) / 100.0
+
+        if direction == 1:
+            prob = (prob / (1 - p)) if arriving else (prob * (1 - p) + p)
+        else:
+            prob = ((prob - p) / (1 - p)) if arriving else (prob * (1 - p))
+
+        # small baseline friction per step, regardless of key numbers
+        prob += direction * baseline_step_shift
+        current = nxt
+
+    return prob_to_american(prob)
 
 
 # --- Price gap between two quotes (possibly at different spreads) ---------

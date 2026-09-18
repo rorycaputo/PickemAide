@@ -73,15 +73,19 @@ def get_odds_shark_spreads(fetch=True):
     all_events = []
     spreads_table = odds_shark_html.xpath('//table[@id="spread-table"]')[0]
     for event in spreads_table.xpath(".//tr[starts-with(@class, 'oddsGameRow')]"):
-        date_cell = event.xpath('.//div[@class="td-cell game-time"]')[0]
-        date_spans = date_cell.xpath('.//span/text()')
-        # format example: <span>Sep 17,&nbsp;</span><span>20:15</span>
-        date_string = "{} {}".format(date_spans[0].replace('\xa0', ' ').strip().rstrip(','), date_spans[1].strip())
-        if 'Today' in date_string:
-            date_string = date_string.replace('Today', current_date.strftime('%b %d'))
-        event_date = datetime.strptime(f"{date_string} {current_date.year}", "%b %d %H:%M %Y")
-        if current_date.month == 12 and event_date.month == 1 and event_date.day <= 7:
-            event_date = event_date.replace(year=event_date.year + 1)
+        date_cell_result = event.xpath('.//div[@class="td-cell game-time"]')
+        date_cell = date_cell_result[0] if date_cell_result else None
+        if date_cell is not None:
+            date_spans = date_cell.xpath('.//span/text()')
+            # format example: <span>Sep 17,&nbsp;</span><span>20:15</span>
+            date_string = "{} {}".format(date_spans[0].replace('\xa0', ' ').strip().rstrip(','), date_spans[1].strip())
+            if 'Today' in date_string:
+                date_string = date_string.replace('Today', current_date.strftime('%b %d'))
+            event_date = datetime.strptime(f"{date_string} {current_date.year}", "%b %d %H:%M %Y")
+            if current_date.month == 12 and event_date.month == 1 and event_date.day <= 7:
+                event_date = event_date.replace(year=event_date.year + 1)
+        else:
+            event_date = current_date - timedelta(days=1)
 
         if current_date <= event_date <= tuesday: # Todo add first week override
             events_row = []
