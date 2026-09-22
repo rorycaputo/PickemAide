@@ -6,11 +6,7 @@ import espn_bet
 import odds_shark
 import spread_odds_converter
 import util
-
-# Todo, 2026 vision: Make each book object-oriented instead of returning random json for each.
-# This way can split Odds Shark up into multiple book objects
-# and more importantly no weirdness in this main file when it comes to creating prettier tables and metrics views
-# gotta rip the bandaide and move to csv
+# Todo: move to csv
 
 #  todo see if we can just exclude if its false and there's no file saved
 FETCH_PICKEM = True
@@ -18,15 +14,14 @@ FETCH_DRAFKKINGS = True
 FETCH_ESPNBET = True
 FETCH_ODDSHARK = True
 
-AVG_ALL = 'AVG_ALL' # Doesn't include Odds Shark as of writing
-DRAFTKINGS_DIFF_HEADER = 'DK Value Diff*'
+DIFF_HEADER = 'Value Diff*'
+AVG_ALL = f'Average {DIFF_HEADER}'
+DRAFTKINGS_DIFF_HEADER = f'DK {DIFF_HEADER}'
 DRAFTKINGS_ODDS_HEADER = 'DK Odds'
-ESPNBET_DIFF_HEADER = 'ESPN Value Diff*'
+ESPNBET_DIFF_HEADER = f'ESPN {DIFF_HEADER}'
 ESPNBET_ODDS_HEADER = 'ESPN Odds'
-ODDSSHARK_DIFF_HEADER = 'OS Diff'
-ODDSSHARK_ODDS_HEADER = 'OS Odds'
 
-SORT_BY_HEADERS = [AVG_ALL] # [Spread Diff Header, Odds Header] (Or just AVG_ALL by itself)
+SORT_BY_HEADERS = [AVG_ALL] # Spread Diff Header or AVG_ALL
 
 def main():
     pickem_lines = pickem.get_pickem_lines(FETCH_PICKEM)
@@ -34,6 +29,7 @@ def main():
     dk_lines = draft_kings.get_draft_kings_lines(FETCH_DRAFKKINGS)
     espn_lines = espn_bet.get_espn_bet_lines(FETCH_ESPNBET)
     print('* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.')
+    print('\u2020 From Covers.com')
     print(build_table(pickem_lines, dk_lines, espn_lines, os_lines))
 
 def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
@@ -62,36 +58,40 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
         os_team = get_team_from_map(line['team'], 'o')
         os_record = get_record(os_team, os_lines)
         if os_record is not None:
-            os_spread_diff = get_spread_diff(line['spread'], os_record['spread'])
-            # Not ready since its averaged still and not only .5 increments
-            # os_value_diff = get_value_diff(line['spread'], os_record['spread'], os_record['odds'])['cents_gap']
-            os_record['diff'] = os_spread_diff
+            for os_spread in os_record['spreads']:
+                os_spread_diff = get_spread_diff(line['spread'], os_spread['spread'])
+                os_value_diff = get_value_diff(line['spread'], os_spread['spread'], os_spread['odds'])['cents_gap']
+                os_spread['diff'] = os_value_diff
         else:
             os_spread_diff = 0
-            os_record = {'spread': '999', 'odds': '-110', 'diff': '0'}
+            os_record = {'team': os_team, 'spreads': []}
 
-        final_table.append({
+        final_event_output = {
             'Team': dk_team,
             'PickEm': line['spread'],
-            'Odds Shark': f'{os_record["spread"]}{get_spread_display_arrow(os_spread_diff)}',
-            ODDSSHARK_ODDS_HEADER: f'{os_record["odds"]}{get_odds_display_arrow(os_record["odds"])}',
-            ODDSSHARK_DIFF_HEADER: os_record['diff'],
+            AVG_ALL: '',
             'Draft Kings': f'{dk_record["spread"]}', #{get_spread_display_arrow(dk_spread_diff)}',
             DRAFTKINGS_ODDS_HEADER: f'{dk_record["odds"]}', #{get_odds_display_arrow(dk_record["odds"])}',
             DRAFTKINGS_DIFF_HEADER: f'{dk_record["diff"]}{get_cents_display_arrow(dk_record["diff"])}',
             'ESPN Bet': f'{espn_record["spread"]}', #{get_spread_display_arrow(espn_spread_diff)}',
             ESPNBET_ODDS_HEADER: f'{espn_record["odds"]}', #{get_odds_display_arrow(espn_record["odds"])}',
             ESPNBET_DIFF_HEADER: f'{espn_record["diff"]}{get_cents_display_arrow(espn_record["diff"])}',
-        })
+        }
 
-    # Todo averaging logic is hardcoded here
-    # Todo If the spread diffs aren't the same this just sorts by odds of the highest diff
-    if SORT_BY_HEADERS[0] == AVG_ALL:
-        spread_diff_average = lambda x: ((get_diff_from_table(x, DRAFTKINGS_DIFF_HEADER) + get_diff_from_table(x, ESPNBET_DIFF_HEADER)) / 2)
-        odds_average = lambda x: determine_odds_average(x)
-        sort_lambda = lambda x: (-spread_diff_average(x), odds_average(x))
-    else:
-        sort_lambda = lambda x: (-get_diff_from_table(x, SORT_BY_HEADERS[0]), get_odds_from_table(x, SORT_BY_HEADERS[1]))
+        for spread in os_record['spreads']:
+            final_event_output[f'{spread["book"]}\u2020'] = f'{spread["spread"]}' #{get_spread_display_arrow(spread["diff"])}'
+            final_event_output[f'{spread["book"]}\u2020 Odds'] = f'{spread["odds"]}' #{get_odds_display_arrow(spread["odds"])}'
+            final_event_output[f'{spread["book"]}\u2020{DIFF_HEADER}'] = f'{spread["diff"]}{get_cents_display_arrow(spread["diff"])}'
+
+        average_diff_lambda = lambda event: (lambda diff_keys: sum(get_diff_from_table(event, k) for k in diff_keys) / len(diff_keys) if diff_keys else 0)(
+            [k for k in event.keys() if (k.endswith(DIFF_HEADER) and not k == AVG_ALL)]
+        )
+        diff_average = round(average_diff_lambda(final_event_output), 2)
+        final_event_output[AVG_ALL] = f'{diff_average}{get_cents_display_arrow(diff_average)}'
+
+        final_table.append(final_event_output)
+
+    sort_lambda = lambda x: (-get_diff_from_table(x, SORT_BY_HEADERS[0]))
     sorted_final_table = sorted(final_table, key=sort_lambda)
     table = tabulate(sorted_final_table, headers="keys", tablefmt="fancy_outline")
     return table

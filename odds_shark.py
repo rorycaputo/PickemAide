@@ -60,9 +60,7 @@ def get_spread_html(fetch=True):
         with open(OUTPUT_FILE) as file:
             return html.fromstring(file.read())
 
-# Output format: {'team': 'MIA', 'spread': '12.5', 'odds': '-110', 'diff': ''}
-# spread is the average of all non-excluded spreads
-# odds is the average of all odds values from the mode of the non-excluded spreads
+# Output format: {'team': 'MIA', 'spreads': [{'book': 'Caesars', 'spread': '12.5', 'odds': '-110', 'diff': ''}]}
 def get_odds_shark_spreads(fetch=True):
     odds_shark_html = get_spread_html(fetch)
     current_date = datetime.now()
@@ -93,7 +91,7 @@ def get_odds_shark_spreads(fetch=True):
                 events_row.append({'team': participant_name, 'spreads': [], 'average_spread': None, 'average_mode_odds': None})
             # opening_or_best_or_none_xpath = "boolean(.//div[@class='mobile-only-best-odds' or @class='odds-spread opening' or @class='odds-type-no-odds'])"
             for book_column in event.xpath('.//td[contains(@class, "liveOddsCell")]'):
-                spread = get_spreads_from_cell(book_column, EXCLUDED_BOOKS)
+                spread = get_spreads_from_cell(book_column)
                 if not spread is None:
                     if (home := spread.get('home')): events_row[1]['spreads'].append(home)
                     if (away := spread.get('away')): events_row[0]['spreads'].append(away)
@@ -101,21 +99,21 @@ def get_odds_shark_spreads(fetch=True):
                 all_events.append(side)
 
     for event in all_events:
-        event_spreads = event['spreads']
-        mode_odds_list = get_odds_with_spread(event_spreads, get_spread_mode(event_spreads))
-        os_spreads_data.append({
-            'team': event['team'],
-            'spread': round(get_average_spread(event_spreads), 3),
-            'odds': round(util.determine_odds_average(mode_odds_list), 3),
-            'diff': ''
-        })
+        filtered_spreads = []
+        for event_spread in event['spreads']:
+            if not event_spread['book'] in EXCLUDED_BOOKS:
+                filtered_spreads.append({
+                    'book': event_spread['book'],
+                    'spread': event_spread['spread'],
+                    'odds': event_spread['odds'],
+                    'diff': ''
+                })
+        os_spreads_data.append({'team': event['team'], 'spreads': filtered_spreads})
     
     return os_spreads_data
             
-def get_spreads_from_cell(book_column, excluded_books=[]):
+def get_spreads_from_cell(book_column):
     book = book_column.get('data-book')
-    if book in excluded_books:
-        return None
     home_div_result = book_column.xpath('.//div[contains(@class, "home-cell")]')
     home_div = home_div_result[0] if home_div_result else None
     away_div_result = book_column.xpath('.//div[contains(@class, "away-cell")]')
