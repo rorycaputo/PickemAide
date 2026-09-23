@@ -1,12 +1,16 @@
 from tabulate import tabulate
 import re
+from datetime import datetime
 import draft_kings
 import pickem
 import espn_bet
 import odds_shark
 import spread_odds_converter
 import util
-# Todo: move to csv
+import csv_util
+import html_util
+
+# todo get CBS odds at time of go-live
 
 #  todo see if we can just exclude if its false and there's no file saved
 FETCH_PICKEM = True
@@ -14,14 +18,22 @@ FETCH_DRAFKKINGS = True
 FETCH_ESPNBET = True
 FETCH_ODDSHARK = True
 
+SPREAD_HEADER = 'Spread'
+ODDS_HEADER = 'Odds'
 DIFF_HEADER = 'Value Diff*'
+
 AVG_ALL = f'Average {DIFF_HEADER}'
-DRAFTKINGS_DIFF_HEADER = f'DK {DIFF_HEADER}'
-DRAFTKINGS_ODDS_HEADER = 'DK Odds'
-ESPNBET_DIFF_HEADER = f'ESPN {DIFF_HEADER}'
-ESPNBET_ODDS_HEADER = 'ESPN Odds'
+DRAFTKINGS_SPREAD_HEADER = f'Draft Kings {SPREAD_HEADER}'
+DRAFTKINGS_DIFF_HEADER = f'Draft Kings {DIFF_HEADER}'
+DRAFTKINGS_ODDS_HEADER = f'Draft Kings {ODDS_HEADER}'
+ESPNBET_SPREAD_HEADER = f'ESPN Bet {SPREAD_HEADER}'
+ESPNBET_DIFF_HEADER = f'ESPN Bet {DIFF_HEADER}'
+ESPNBET_ODDS_HEADER = f'ESPN Bet {ODDS_HEADER}'
 
 SORT_BY_HEADERS = [AVG_ALL] # Spread Diff Header or AVG_ALL
+
+CSV_OUTPUT_FILENAME = './out/spreads_output'
+HTML_READOUT_FILENAME = './out/readout.html'
 
 def main():
     pickem_lines = pickem.get_pickem_lines(FETCH_PICKEM)
@@ -30,7 +42,15 @@ def main():
     espn_lines = espn_bet.get_espn_bet_lines(FETCH_ESPNBET)
     print('* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.')
     print('\u2020 From Covers.com')
-    print(build_table(pickem_lines, dk_lines, espn_lines, os_lines))
+
+    final_tabulate_table, final_tabulate_dict = build_table(pickem_lines, dk_lines, espn_lines, os_lines)
+    print(final_tabulate_table)
+    # todo actual timestamps for each book
+    # todo pass in the above text and do more work to the page
+    # todo format for email
+    # todo make only 'spread' and 'odds' neccessary for the sub-headers so CBS is in there
+    output_csv = csv_util.create_csv(final_tabulate_dict, f'{CSV_OUTPUT_FILENAME}_{datetime.now().strftime("%m_%d_%y_%H_%M")}.csv')
+    html_util.create_html(output_csv, HTML_READOUT_FILENAME, sub_headers=[SPREAD_HEADER, ODDS_HEADER, DIFF_HEADER])
 
 def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
     final_table = []
@@ -70,18 +90,18 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
             'Team': dk_team,
             'PickEm': line['spread'],
             AVG_ALL: '',
-            'Draft Kings': f'{dk_record["spread"]}', #{get_spread_display_arrow(dk_spread_diff)}',
+            DRAFTKINGS_SPREAD_HEADER: f'{dk_record["spread"]}', #{get_spread_display_arrow(dk_spread_diff)}',
             DRAFTKINGS_ODDS_HEADER: f'{dk_record["odds"]}', #{get_odds_display_arrow(dk_record["odds"])}',
             DRAFTKINGS_DIFF_HEADER: f'{dk_record["diff"]}{get_cents_display_arrow(dk_record["diff"])}',
-            'ESPN Bet': f'{espn_record["spread"]}', #{get_spread_display_arrow(espn_spread_diff)}',
+            ESPNBET_SPREAD_HEADER: f'{espn_record["spread"]}', #{get_spread_display_arrow(espn_spread_diff)}',
             ESPNBET_ODDS_HEADER: f'{espn_record["odds"]}', #{get_odds_display_arrow(espn_record["odds"])}',
             ESPNBET_DIFF_HEADER: f'{espn_record["diff"]}{get_cents_display_arrow(espn_record["diff"])}',
         }
 
         for spread in os_record['spreads']:
-            final_event_output[f'{spread["book"]}\u2020'] = f'{spread["spread"]}' #{get_spread_display_arrow(spread["diff"])}'
-            final_event_output[f'{spread["book"]}\u2020 Odds'] = f'{spread["odds"]}' #{get_odds_display_arrow(spread["odds"])}'
-            final_event_output[f'{spread["book"]}\u2020{DIFF_HEADER}'] = f'{spread["diff"]}{get_cents_display_arrow(spread["diff"])}'
+            final_event_output[f'{spread["book"]}\u2020 {SPREAD_HEADER}'] = f'{spread["spread"]}' #{get_spread_display_arrow(spread["diff"])}'
+            final_event_output[f'{spread["book"]}\u2020 {ODDS_HEADER}'] = f'{spread["odds"]}' #{get_odds_display_arrow(spread["odds"])}'
+            final_event_output[f'{spread["book"]}\u2020 {DIFF_HEADER}'] = f'{spread["diff"]}{get_cents_display_arrow(spread["diff"])}'
 
         average_diff_lambda = lambda event: (lambda diff_keys: sum(get_diff_from_table(event, k) for k in diff_keys) / len(diff_keys) if diff_keys else 0)(
             [k for k in event.keys() if (k.endswith(DIFF_HEADER) and not k == AVG_ALL)]
@@ -94,7 +114,7 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
     sort_lambda = lambda x: (-get_diff_from_table(x, SORT_BY_HEADERS[0]))
     sorted_final_table = sorted(final_table, key=sort_lambda)
     table = tabulate(sorted_final_table, headers="keys", tablefmt="fancy_outline")
-    return table
+    return table, sorted_final_table
 
 def get_diff_from_table(table, spread_header):
     return float(re.sub(r'[^\d.-]', '', table[spread_header]))
