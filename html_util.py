@@ -333,6 +333,15 @@ def build_html(rows, title='CSV Export', sub_headers=None, preface_lines=None, h
         table.data-table tr:nth-child(even) td {
             background: #252525;
         }
+        table.data-table tbody tr {
+            cursor: pointer;
+        }
+        table.data-table tbody tr:hover td {
+            background: #3a3a1e !important;
+        }
+        table.data-table tbody tr.pinned td {
+            background: #55510f !important;
+        }
         table.data-table .col-boundary {
             border-left: 3px solid #777;
         }
@@ -351,6 +360,14 @@ def build_html(rows, title='CSV Export', sub_headers=None, preface_lines=None, h
     if preface_elements:
         body_children.append(E.div(*preface_elements, {'class': 'preface'}))
     body_children.append(table_wrapper)
+    body_children.append(E.script("""
+        document.querySelector('table.data-table tbody').addEventListener('click', function (event) {
+            var row = event.target.closest('tr');
+            if (row) {
+                row.classList.toggle('pinned');
+            }
+        });
+    """))
 
     doc = E.html(
         E.head(E.meta(charset='utf-8'), E.title(title), style),
@@ -388,10 +405,10 @@ def create_html(
     and write it out as a styled, ANSI-color-aware HTML table.
 
     Args:
-        filename: Path to the input CSV file.
+        csv_filename: Path to the input CSV file.
         output_filename: Path to write the HTML file to. If omitted,
-            defaults to `filename` with its extension replaced by `.html`.
-        title: Optional page title. Defaults to `filename`.
+            defaults to `csv_filename` with its extension replaced by `.html`.
+        title: Optional page title. Defaults to `csv_filename`.
         sub_headers: optional list of exactly 3 words (e.g. ['word0',
             'word1', 'word2']). When provided, header columns named
             "<GROUP> word0", "<GROUP> word1", "<GROUP> word2" (all 3,
