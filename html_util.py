@@ -193,24 +193,54 @@ def parse_header_groups(header, words):
     return groups
 
 
-def build_thead(header, sub_headers):
-    groups = parse_header_groups(header, sub_headers)
+def add_class(el, cls):
+    existing = el.get('class')
+    el.set('class', f'{existing} {cls}' if existing else cls)
 
+
+def group_column_starts(groups):
+    """
+    Return the set of body-column indices at which a new top-level
+    header column (a 'single' header or a 'group') begins, excluding
+    column 0 (there's nothing to the left of the first column to
+    separate it from).
+    """
+    starts = set()
+    col = 0
+    for i, item in enumerate(groups):
+        width = 1 if item[0] == 'single' else len(item[2])
+        if i > 0:
+            starts.add(col)
+        col += width
+    return starts
+
+
+def build_thead(groups, boundary_cols):
     top_row_cells = []
     sub_row_cells = []
+    col = 0
     for item in groups:
         if item[0] == 'single':
             th = cell_to_element('th', item[1])
             th.set('rowspan', '2')
+            if col in boundary_cols:
+                add_class(th, 'col-boundary')
             top_row_cells.append(th)
+            col += 1
         else:
             _, group_name, words = item
             group_th = cell_to_element('th', group_name)
             group_th.set('colspan', str(len(words)))
-            group_th.set('class', 'group-header')
+            add_class(group_th, 'group-header')
+            if col in boundary_cols:
+                add_class(group_th, 'col-boundary')
             top_row_cells.append(group_th)
-            for word in words:
-                sub_row_cells.append(cell_to_element('th', word))
+            for j, word in enumerate(words):
+                sub_th = cell_to_element('th', word)
+                if j == 0 and col in boundary_cols:
+                    add_class(sub_th, 'col-boundary')
+                sub_row_cells.append(sub_th)
+            col += len(words)
 
     rows = [E.tr(*top_row_cells)]
     if sub_row_cells:
@@ -218,28 +248,48 @@ def build_thead(header, sub_headers):
     return E.thead(*rows)
 
 
-def build_html(rows, title='CSV Export', sub_headers=None):
+def build_body_row(row, boundary_cols):
+    cells = []
+    for j, cell in enumerate(row):
+        td = cell_to_element('td', cell)
+        if j in boundary_cols:
+            add_class(td, 'col-boundary')
+        cells.append(td)
+    return E.tr(*cells)
+
+
+def build_html(rows, title='CSV Export', sub_headers=None, preface_lines=None, header_text=None):
     """
     Args:
         rows: list of CSV rows (first row is the header).
-        title: page title.
+        title: page title (used in <title>, and as the subtitle line
+            above the table unless overridden by header_text below).
         sub_headers: optional list of exactly 3 words (e.g. ['word0',
             'word1', 'word2']). When present, any run of 3 consecutive
             header columns named "<GROUP> word0", "<GROUP> word1",
             "<GROUP> word2" (same GROUP, in that order) is rendered as a
             spanning group header over a sub-header row. Columns that
             don't match this pattern render as normal single headers.
+        preface_lines: optional list of strings, printed in order as
+            separate lines above the table. Supports the same embedded
+            ANSI color codes as table cells.
+        header_text: optional string printed as a bold heading at the
+            very top of the page, above the "title — generated ..."
+            subtitle line.
     """
     if not rows:
         raise ValueError('No rows found in CSV.')
 
     header, *body = rows
 
-    thead = build_thead(header, sub_headers)
-    tbody = E.tbody(
-        *[E.tr(*[cell_to_element('td', cell) for cell in row]) for row in body]
-    )
+    groups = parse_header_groups(header, sub_headers)
+    boundary_cols = group_column_starts(groups)
+
+    thead = build_thead(groups, boundary_cols)
+    tbody = E.tbody(*[build_body_row(row, boundary_cols) for row in body])
     table = E.table(thead, tbody, {'class': 'data-table'})
+
+    preface_elements = [cell_to_element('p', line) for line in (preface_lines or [])]
 
     style = E.style("""
         body {
@@ -248,11 +298,20 @@ def build_html(rows, title='CSV Export', sub_headers=None):
             color: #d3d7cf;
             padding: 2rem;
         }
-        h1 { font-size: 1.1rem; font-weight: normal; color: #888; }
+        h1 { font-size: 1.4rem; font-weight: bold; color: #eee; margin: 0 0 0.2rem 0; }
+        h2 { font-size: 1.1rem; font-weight: normal; color: #888; margin: 0 0 0.6rem 0; }
+        .preface p {
+            margin: 0 0 0.4rem 0;
+        }
+        .table-scroll {
+            overflow-x: auto;
+            max-width: 100%;
+        }
         table.data-table {
             border-collapse: collapse;
             width: 100%;
             font-size: 0.9rem;
+            border: 3px solid #777;
         }
         table.data-table th, table.data-table td {
             border: 1px solid #444;
@@ -274,11 +333,28 @@ def build_html(rows, title='CSV Export', sub_headers=None):
         table.data-table tr:nth-child(even) td {
             background: #252525;
         }
+        table.data-table .col-boundary {
+            border-left: 3px solid #777;
+        }
     """)
+
+    table_wrapper = E.div(table, {'class': 'table-scroll'})
+
+    subtitle = cell_to_element(
+        'h2', f'{title} — generated {datetime.now().strftime("%d_%m_%y_%H_%M")}'
+    )
+
+    body_children = []
+    if header_text:
+        body_children.append(cell_to_element('h1', header_text))
+    body_children.append(subtitle)
+    if preface_elements:
+        body_children.append(E.div(*preface_elements, {'class': 'preface'}))
+    body_children.append(table_wrapper)
 
     doc = E.html(
         E.head(E.meta(charset='utf-8'), E.title(title), style),
-        E.body(E.h1(f'{title} — generated {datetime.now().strftime("%m_%d_%y_%H_%M")}'), table),
+        E.body(*body_children),
     )
     return doc
 
@@ -299,7 +375,14 @@ def superscript_daggers(html_str):
     return html_str.replace(DAGGER, f'<sup>{DAGGER}</sup>')
 
 
-def create_html(filename, output_filename=None, title=None, sub_headers=None):
+def create_html(
+    csv_filename,
+    output_filename=None,
+    title=None,
+    sub_headers=None,
+    preface_lines=None,
+    header_text=None,
+):
     """
     Read a CSV file (rows separated by newlines, ',' as the only delimiter)
     and write it out as a styled, ANSI-color-aware HTML table.
@@ -315,18 +398,28 @@ def create_html(filename, output_filename=None, title=None, sub_headers=None):
             same GROUP, consecutive, in that order) are rendered as a
             2-level header: a spanning "<GROUP>" cell over the 3 words.
             Columns that don't match the pattern are left as-is.
+        preface_lines: optional list of strings, printed in order as
+            separate lines above the table.
+        header_text: optional string printed as a bold heading at the
+            very top of the page, above the title/timestamp subtitle.
 
     Returns:
         The path the HTML file was written to.
     """
-    with open(filename, newline='', encoding='utf-8') as f:
+    with open(csv_filename, newline='', encoding='utf-8') as f:
         reader = csv.reader(f, delimiter=',')
         rows = [row for row in reader]
 
-    doc = build_html(rows, title=title or filename, sub_headers=sub_headers)
+    doc = build_html(
+        rows,
+        title=title or csv_filename,
+        sub_headers=sub_headers,
+        preface_lines=preface_lines,
+        header_text=header_text,
+    )
 
     if output_filename is None:
-        base, _ext = os.path.splitext(filename)
+        base, _ext = os.path.splitext(csv_filename)
         output_filename = base + '.html'
 
     html_str = tostring(doc, doctype='<!DOCTYPE html>', pretty_print=True, encoding='unicode')

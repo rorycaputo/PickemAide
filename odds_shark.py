@@ -16,7 +16,7 @@ EXCLUDED_BOOKS = [
         # 'Fanatics Sportsbook',
         # 'BetRivers',
         # 'Caesars',
-        'theScore Bet',
+        # 'theScore Bet',
         # 'Hard Rock Bet',
     ]
 
