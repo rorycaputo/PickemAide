@@ -5,7 +5,7 @@ import base64
 headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'utf-8',
         'DNT': '1',
         'Connection': 'keep-alive',
@@ -55,11 +55,11 @@ def call_post_api(url, session=requests.Session(), headers=headers, params=None,
         print(f'Something went wrong: {err}')
         return err
     
-def call_get_api_with_session(session, url, headers=headers, params=None):
+def call_get_api_with_session(url, headers=headers, params=None, session=requests.Session()):
     try:
         response = session.get(url, params=params, headers=headers)
         response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
-        return response
+        return response, session
     except requests.exceptions.HTTPError as http_err:
         print(f'HTTP error occurred: {http_err}')
         return http_err
@@ -78,7 +78,7 @@ def pickem_login_post(session, u, p):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0',
         'Accept': 'text/x-component',
-        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
         'Referer': 'https://www.cbssports.com/login?masterProductId=41010&product_abbrev=opm&show_opts=1&xurl=https%3A%2F%2Fpicks.cbssports.com%2Ffootball%2Fpickem%2Fpools%2Fkbxw63b2geztqnjuha2ds%3D%3D%3D%3FentryId%3Divxhi4tzhizdcnbrgm2tinbs%26device%3Ddesktop%26device%3Ddesktop',
         'Next-Action': '601c2c8161dd24e91b012db39031dadda1b93c878b',
@@ -110,9 +110,9 @@ def pickem_login_post(session, u, p):
 
 def espn_chunk_get(url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0',
         'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
         'Referer': 'https://sportsbook.thescore.bet/sport/football/organization/united-states/competition/nfl/section/lines',
         'DNT': '1',
@@ -124,23 +124,27 @@ def espn_chunk_get(url):
         'TE': 'trailers'
     }
 
-    return call_get_api(url, headers).content.decode('utf-8')
+    response, session = call_get_api_with_session(url, headers=headers)
+    return response.content.decode('utf-8'), session
 
-def espn_startup_get(startup_sha):
-    espn_startup_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{startup_sha}?operationName=Startup&variables=%7B%22connectToken%22%3A%22dfccj0ad8xg1iwqpqilcxrkm1o61x1d%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{startup_sha}%22%7D%7D'
+def espn_startup_get(startup_sha, session):
+    espn_startup_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{startup_sha}?operationName=Startup&variables=%7B%22connectToken%22%3A%221c5d8xeornbn3t5nr57bv5ns141gky%22%2C%22latLongParams%22%3A%7B%22accuracy%22%3A20%2C%22latitude%22%3A39.7638164%2C%22longitude%22%3A-89.7408708%7D%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{startup_sha}%22%7D%7D'
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0',
         'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
         'Referer': 'https://sportsbook.thescore.bet/',
         'content-type': 'application/json',
         'apollographql-client-name': 'espnbet-espnbet-web',
-        'apollographql-client-version': '25.19.2',
+        'apollographql-client-version': '26.19.1', # todo get some of these from previous API calls
+        'x-install-id': '2jo2djanm6c11cybd79sjbz1pqup21',
         'x-platform': 'web',
-        'x-app-version': '25.19.2',
+        'x-app-version': '26.19.1',
         'x-app': 'espnbet',
         'x-client': 'espnbet',
+        'x-dma': '602',
+        'x-device': 'DESKTOP',
         'Origin': 'https://sportsbook.thescore.bet',
         'DNT': '1',
         'Sec-GPC': '1',
@@ -152,30 +156,34 @@ def espn_startup_get(startup_sha):
         'TE': 'trailers'
     }
 
-    return call_get_api(espn_startup_url, headers).json()
+    response, session = call_get_api_with_session(espn_startup_url, headers=headers, session=session)
+    return response.json(), session
 
-def espn_marketplace_get(marketplace_sha, bearer_token):
-    espn_marketplace_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{marketplace_sha}?operationName=Marketplace&variables=%7B%22includeSectionDefaultField%22%3Atrue%2C%22isAdhocCarouselEnabled%22%3Afalse%2C%22isCfpRankingEnabled%22%3Afalse%2C%22includeStandardizedBoxscore%22%3Atrue%2C%22isBrandingImageEnabled%22%3Atrue%2C%22isNewFeaturedBetParticipantLogoEnabled%22%3Atrue%2C%22isSubscription%22%3Afalse%2C%22isFeaturedMarketCardRedesignEnabled%22%3Atrue%2C%22isCombatSportsRedesignEnabled%22%3Atrue%2C%22isParlayLoungeHeaderRedesignEnabled%22%3Afalse%2C%22isFeaturedBetCarouselHeaderRedesignEnabled%22%3Atrue%2C%22isDsModelRecommendedPropsEnabled%22%3Afalse%2C%22canonicalUrl%22%3A%22%2Fsport%2Ffootball%2Forganization%2Funited-states%2Fcompetition%2Fnfl%2Fsection%2Flines%22%2C%22filterInput%22%3Anull%2C%22oddsFormat%22%3A%22AMERICAN%22%2C%22pageType%22%3A%22PAGE%22%2C%22includeRecommendedProps%22%3Atrue%2C%22includeRichEvent%22%3Atrue%2C%22selectedFilterId%22%3A%22%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{marketplace_sha}%22%7D%7D'
+def espn_marketplace_get(marketplace_sha, bearer_token, session):
+    espn_marketplace_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{marketplace_sha}?operationName=CompetitionPageSectionLinesTabNode&variables=%7B%22isSubscription%22%3Afalse%2C%22pageType%22%3A%22PAGE%22%2C%22includeRecommendedProps%22%3Atrue%2C%22isBrandingImageEnabled%22%3Atrue%2C%22isNewFeaturedBetParticipantLogoEnabled%22%3Atrue%2C%22isFeaturedBetCarouselHeaderRedesignEnabled%22%3Atrue%2C%22includeStandardizedBoxscore%22%3Atrue%2C%22isCfpRankingEnabled%22%3Atrue%2C%22isCombatSportsRedesignEnabled%22%3Atrue%2C%22isFeaturedMarketCardRedesignEnabled%22%3Atrue%2C%22isDsModelRecommendedPropsEnabled%22%3Afalse%2C%22isBlueprintUiFieldEnabled%22%3Afalse%2C%22includeRichEvent%22%3Atrue%2C%22oddsFormat%22%3A%22AMERICAN%22%2C%22sectionId%22%3A%22Section%3A647c3091-b79f-47bc-a96c-b053cc3a4a6a%22%2C%22selectedFilterId%22%3A%22%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{marketplace_sha}%22%7D%7D'
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0',
         'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
         'Referer': 'https://sportsbook.thescore.bet/',
         'content-type': 'application/json',
         'apollographql-client-name': 'espnbet-espnbet-web',
-        'apollographql-client-version': '25.19.2',
+        'apollographql-client-version': '26.19.1',
+        'x-install-id': '2jo2djanm6c11cybd79sjbz1pqup21',
         'x-platform': 'web',
-        'x-app-version': '25.19.2',
+        'x-app-version': '26.19.1',
         'x-app': 'espnbet',
         'x-client': 'espnbet',
         'x-anonymous-authorization': f'Bearer {bearer_token}', 
-        'traceparent': '00-0000000000000000dc2e074d5b00c264-25a36825a0b5b0dc-01',
+        'x-dma': '602',
+        'x-device': 'DESKTOP',
+        'traceparent': '00-000000000000000099a45539b68f223b-07f195826b19197c-01',
         'tracestate': 'dd=s:1;o:rum',
         'x-datadog-origin': 'rum',
-        'x-datadog-parent-id': '2712125911426511068',
+        'x-datadog-parent-id': '572403015027857788',
         'x-datadog-sampling-priority': '1',
-        'x-datadog-trace-id': '15865626566093488740',
+        'x-datadog-trace-id': '11071067490347852347',
         'Origin': 'https://sportsbook.thescore.bet',
         'DNT': '1',
         'Sec-GPC': '1',
@@ -185,4 +193,4 @@ def espn_marketplace_get(marketplace_sha, bearer_token):
         'Sec-Fetch-Site': 'cross-site'
     }
 
-    return call_get_api(espn_marketplace_url, headers)
+    return call_get_api_with_session(espn_marketplace_url, headers=headers, session=session)

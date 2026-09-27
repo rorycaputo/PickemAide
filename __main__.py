@@ -16,7 +16,7 @@ import html_util
 #  todo see if we can just exclude if its false and there's no file saved
 FETCH_PICKEM = True
 FETCH_DRAFKKINGS = True
-FETCH_ESPNBET = False
+FETCH_ESPNBET = True
 FETCH_ODDSHARK = True
 
 SPREAD_HEADER = 'Spread'
@@ -37,7 +37,7 @@ HTML_HEADER_TEXT = 'Week '
 VALUE_DIFF_DISCLAIMER = '* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.'
 COVERS_DISCLAIMER = '\u2020 From Covers.com'
 
-OVERRIDE_CSV_DATA = None
+OVERRIDE_CSV_DATA = 'out\\spreads_output_09_27_26_11_15.csv'
 
 CSV_OUTPUT_FILENAME = './out/spreads_output'
 HTML_READOUT_FILENAME = './out/readout.html'
@@ -54,6 +54,7 @@ def main():
     final_tabulate_table, final_tabulate_dict = build_table(pickem_lines, dk_lines, espn_lines, os_lines)
     print(final_tabulate_table)
     # todo actual timestamps for each book
+    # todo actual csv timestamp for 'Generated' text on html
     # todo format for email
     # todo make only 'spread' and 'odds' neccessary for the sub-headers so CBS is in there (if we can figure out CBS initial odds)
     if OVERRIDE_CSV_DATA is not None:
@@ -110,9 +111,9 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
             DRAFTKINGS_SPREAD_HEADER: f'{dk_record["spread"]}', #{get_spread_display_arrow(dk_spread_diff)}',
             DRAFTKINGS_ODDS_HEADER: f'{dk_record["odds"]}', #{get_odds_display_arrow(dk_record["odds"])}',
             DRAFTKINGS_DIFF_HEADER: f'{dk_record["diff"]}{get_cents_display_arrow(dk_record["diff"])}',
-            # ESPNBET_SPREAD_HEADER: f'{espn_record["spread"]}', #{get_spread_display_arrow(espn_spread_diff)}',
-            # ESPNBET_ODDS_HEADER: f'{espn_record["odds"]}', #{get_odds_display_arrow(espn_record["odds"])}',
-            # ESPNBET_DIFF_HEADER: f'{espn_record["diff"]}{get_cents_display_arrow(espn_record["diff"])}',
+            ESPNBET_SPREAD_HEADER: f'{espn_record["spread"]}', #{get_spread_display_arrow(espn_spread_diff)}',
+            ESPNBET_ODDS_HEADER: f'{espn_record["odds"]}', #{get_odds_display_arrow(espn_record["odds"])}',
+            ESPNBET_DIFF_HEADER: f'{espn_record["diff"]}{get_cents_display_arrow(espn_record["diff"])}',
         }
 
         for spread in os_record['spreads']:

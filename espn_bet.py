@@ -37,12 +37,12 @@ def get_bearer_token(startup_resp):
 
 def make_api_calls():
     espn_chunk_url = get_chunk_url(get_espn_html())
-    espn_chunk = apis.espn_chunk_get(espn_chunk_url)
+    espn_chunk, session = apis.espn_chunk_get(espn_chunk_url)
     startup_sha = get_sha_token(espn_chunk, 'Startup')
-    marketplace_sha = get_sha_token(espn_chunk, 'Marketplace')
-    bearer_token = get_bearer_token(apis.espn_startup_get(startup_sha))
-    # espn_marketplace_json = get_espn_marketplace_json()
-    espn_marketplace_resp = apis.espn_marketplace_get(marketplace_sha, bearer_token)
+    marketplace_sha = get_sha_token(espn_chunk, 'CompetitionPageSectionLinesTabNode')
+    bearer_token_resp, session = apis.espn_startup_get(startup_sha, session)
+    bearer_token = get_bearer_token(bearer_token_resp)
+    espn_marketplace_resp, session = apis.espn_marketplace_get(marketplace_sha, bearer_token, session)
     if espn_marketplace_resp is not None:
         print(f'Writing ESPN Bet json to {OUTPUT_FILE} for later use')
         util.write_string_to_file(espn_marketplace_resp, OUTPUT_FILE)
@@ -56,8 +56,7 @@ def get_espn_bet_lines(fetch=True):
     else:
         with open(OUTPUT_FILE) as file:
             espn_marketplace_json = json.load(file)
-    # markets = espn_marketplace_json['data']['page']['defaultChild']['sectionChildren']
-    for sectionChild in espn_marketplace_json['data']['page']['defaultChild']['sectionChildren']:
+    for sectionChild in espn_marketplace_json['data']['competitionSection']['sectionChildren']:
         if sectionChild['__typename'] == 'MarketplaceShelf':
             marketplaceShelfChildren = sectionChild['marketplaceShelfChildren']
     espn_spread_data = []

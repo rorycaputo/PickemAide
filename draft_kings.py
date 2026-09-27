@@ -12,9 +12,9 @@ lines_url = 'https://sportsbook-nash.draftkings.com/sites/US-IL-SB/api/sportscon
 def get_lines_json(fetch=True):
     if fetch:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0',
             'Accept': '*/*',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br, zstd',
             'Referer': 'https://sportsbook.draftkings.com/',
             'Content-Type': 'application/json charset=utf-8',
