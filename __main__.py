@@ -37,7 +37,7 @@ HTML_HEADER_TEXT = 'Week '
 VALUE_DIFF_DISCLAIMER = '* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.'
 COVERS_DISCLAIMER = '\u2020 From Covers.com'
 
-OVERRIDE_CSV_DATA = 'out\\spreads_output_09_27_26_11_15.csv'
+OVERRIDE_CSV_DATA = None
 
 CSV_OUTPUT_FILENAME = './out/spreads_output'
 HTML_READOUT_FILENAME = './out/readout.html'
